@@ -1,24 +1,22 @@
 {
     "products": [
         {
-            "id": "P001",
+            "product_id": "P001",
             "name": "Kaos Polos",
+            "description": "Kaos polos lengan pendek pria/wanita",
             "price": 50000
         },
         {
-            "id": "P002",
+            "product_id": "P002",
             "name": "Hoodie",
+            "description": "Hoodie oversized pria/wanita",
             "price": 200000
         },
         {
-            "id": "P003",
+            "product_id": "P003",
             "name": "Topi",
+            "description": "Topi keren pria/wanita",
             "price": 250000
-        },
-        {
-            "id": "P004",
-            "name": "Celana Pendek",
-            "price": 75000
         }
     ]
 }

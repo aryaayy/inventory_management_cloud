@@ -1,0 +1,22 @@
+{
+    "inventory": [
+        {
+            "product_id": "P001",
+            "available_qty": 52,
+            "sold_qty": 43,
+            "reserved_qty": 3
+        },
+        {
+            "product_id": "P002",
+            "available_qty": 25,
+            "sold_qty": 78,
+            "reserved_qty": 2
+        },
+        {
+            "product_id": "P003",
+            "available_qty": 77,
+            "sold_qty": 56,
+            "reserved_qty": 1
+        }
+    ]
+}
