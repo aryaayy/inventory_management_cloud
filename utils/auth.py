@@ -1,4 +1,6 @@
 # auth_utils.py
+import azure.functions as func
+import json
 import os
 from jose import jwt, JWTError, ExpiredSignatureError
 import datetime
@@ -52,3 +54,21 @@ def get_bearer_token(auth_header: str | None) -> str | None:
     if len(parts) == 2 and parts[0].lower() == "bearer":
         return parts[1]
     return None
+
+# Util – response helper
+def error(msg, code):
+    return func.HttpResponse(json.dumps({"error": msg}), mimetype="application/json", status_code=code)
+
+# Middleware-like helper
+def require_user(req):
+    token = get_bearer_token(req.headers.get("Authorization"))
+    if not token:
+        return None, error("token_required", 401)
+    try:
+        return decode_token(token), None
+    except Exception as e:
+        return None, error("invalid_token", 401)
+
+def require_role(claims, allowed_roles):
+    roles = claims.get("roles", [])
+    return any(r in allowed_roles for r in roles)

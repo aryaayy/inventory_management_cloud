@@ -1,0 +1,24 @@
+{
+    "products": [
+        {
+            "id": "P001",
+            "name": "Kaos Polos",
+            "price": 50000
+        },
+        {
+            "id": "P002",
+            "name": "Hoodie",
+            "price": 200000
+        },
+        {
+            "id": "P003",
+            "name": "Topi",
+            "price": 250000
+        },
+        {
+            "id": "P004",
+            "name": "Celana Pendek",
+            "price": 75000
+        }
+    ]
+}
