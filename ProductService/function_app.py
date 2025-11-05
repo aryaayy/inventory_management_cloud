@@ -32,7 +32,7 @@ def create_product(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         return func.HttpResponse(f"Bad Request: {e}", status_code=400)
 
-    new_product["product_id"] = f"P{(len(data["products"]) + 1):03d}"
+    new_product["product_id"] = f"P{(len(data['products']) + 1):03d}"
     data["products"].append(new_product)
 
     with open("products_db.json", "w") as f:
@@ -95,7 +95,7 @@ def delete_product(req: func.HttpRequest) -> func.HttpResponse:
     with open("products_db.json", "w") as f:
         json.dump(data, f, indent=4)
 
-    return func.HttpResponse(f"Successfully deleted {body["product_id"]}", status_code=200, mimetype="application/json")
+    return func.HttpResponse(f"Successfully deleted {body['product_id']}", status_code=200, mimetype="application/json")
 
 @app.route(route="product/manage", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
 def manage_products(req: func.HttpRequest) -> func.HttpResponse:
