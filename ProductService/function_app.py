@@ -1,4 +1,5 @@
 import azure.functions as func
+import requests
 import json, os, sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from utils.auth import require_role, require_user, error
@@ -24,7 +25,7 @@ def _save(data):
 
 
 # ========= READ (tenant-scoped) =========
-@app.route(route="product/products", auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="product/products", auth_level=func.AuthLevel.FUNCTION)
 def get_products(req: func.HttpRequest) -> func.HttpResponse:
     claims, err = require_user(req)
     if err: 
@@ -43,7 +44,7 @@ def get_products(req: func.HttpRequest) -> func.HttpResponse:
 
 
 # ========= MANAGE (RBAC: Owner only) =========
-@app.route(route="product/manage", auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="product/manage", auth_level=func.AuthLevel.FUNCTION)
 def manage(req: func.HttpRequest) -> func.HttpResponse:
     claims, err = require_user(req)
     if err: 
@@ -58,7 +59,7 @@ def manage(req: func.HttpRequest) -> func.HttpResponse:
 
 
 # ========= CREATE =========
-@app.route(route="product/create", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="product/create", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 def create_product(req: func.HttpRequest) -> func.HttpResponse:
     claims, err = require_user(req)
     if err: 
@@ -73,18 +74,24 @@ def create_product(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"Bad Request: {e}", status_code=400)
 
     # id incremental
-    next_id = f"P{len(data['products']) + 1:03d}"
-    body["product_id"] = next_id
-    body["tenantId"] = claims["tenantId"]
+    prev_product_id = int(data['inventories'][-1]['inventory_id'].lstrip("P"))
+    next_product_id = f"P{(prev_product_id + 1):03d}"
+    new_product = {
+        "product_id": next_product_id,
+        "name": body['name'],
+        "description": body['description'],
+        "price": body['price'],
+        "tenantId": claims['tenantId']
+    }
 
-    data["products"].append(body)
+    data["products"].append(new_product)
     _save(data)
 
-    return func.HttpResponse(json.dumps(body), mimetype="application/json")
+    return func.HttpResponse(json.dumps(new_product), mimetype="application/json")
 
 
 # ========= UPDATE =========
-@app.route(route="product/update", methods=["PUT"], auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="product/update", methods=["PUT"], auth_level=func.AuthLevel.FUNCTION)
 def update_product(req: func.HttpRequest) -> func.HttpResponse:
     claims, err = require_user(req)
     if err: 
@@ -106,11 +113,11 @@ def update_product(req: func.HttpRequest) -> func.HttpResponse:
             _save(data)
             return func.HttpResponse(json.dumps(body), mimetype="application/json")
 
-    return error("not_found_or_forbidden", 404)
+    return error("not found", 404)
 
 
 # ========= DELETE =========
-@app.route(route="product/delete", methods=["DELETE"], auth_level=func.AuthLevel.ANONYMOUS)
+@app.route(route="product/delete", methods=["DELETE"], auth_level=func.AuthLevel.FUNCTION)
 def delete_product(req: func.HttpRequest) -> func.HttpResponse:
     claims, err = require_user(req)
     if err: 

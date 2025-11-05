@@ -1,22 +1,28 @@
 {
-    "inventory": [
+    "inventories": [
         {
+            "inventory_id": "I001",
             "product_id": "P001",
             "available_qty": 52,
             "sold_qty": 43,
-            "reserved_qty": 3
+            "reserved_qty": 3,
+            "tenantId": "T001"
         },
         {
+            "inventory_id": "I002",
             "product_id": "P002",
             "available_qty": 25,
             "sold_qty": 78,
-            "reserved_qty": 2
+            "reserved_qty": 2,
+            "tenantId": "T001"
         },
         {
+            "inventory_id": "I003",
             "product_id": "P003",
             "available_qty": 77,
             "sold_qty": 56,
-            "reserved_qty": 1
+            "reserved_qty": 1,
+            "tenantId": "T001"
         }
     ]
 }

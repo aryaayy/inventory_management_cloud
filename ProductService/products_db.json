@@ -22,10 +22,10 @@
             "tenantId": "T001"
         },
         {
+            "product_id": "P004",
             "name": "Kemeja",
             "description": "Kemeja putih",
             "price": 150000,
-            "product_id": "P004",
             "tenantId": "T001"
         }
     ]
