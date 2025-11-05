@@ -143,4 +143,4 @@ def delete_inventory(req: func.HttpRequest) -> func.HttpResponse:
     if len(data["inventories"]) == before:
         return error("NOT FOUND", 404)
 
-    return func.HttpResponse(f"Deleted {body.get('product_id')}", mimetype="text/plain")
+    return func.HttpResponse(f"Deleted {body['inventory_id']}", mimetype="text/plain")

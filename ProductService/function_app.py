@@ -106,7 +106,7 @@ def update_product(req: func.HttpRequest) -> func.HttpResponse:
 
     data = _load()
     for i, p in enumerate(data["products"]):
-        if p.get("product_id") == body.get("product_id") and p.get("tenantId") == claims["tenantId"]:
+        if p["product_id"] == body["product_id"] and p["tenantId"] == claims["tenantId"]:
             # kunci tenantId agar tidak bisa dipindahkan ke tenant lain
             body["tenantId"] = claims["tenantId"]
             data["products"][i] = body
@@ -134,11 +134,11 @@ def delete_product(req: func.HttpRequest) -> func.HttpResponse:
     before = len(data["products"])
     data["products"] = [
         p for p in data["products"]
-        if not (p.get("product_id") == body.get("product_id") and p.get("tenantId") == claims["tenantId"])
+        if not (p["product_id"] == body["product_id"] and p["tenantId"] == claims["tenantId"])
     ]
     _save(data)
 
     if len(data["products"]) == before:
         return error("not_found_or_forbidden", 404)
 
-    return func.HttpResponse(f"Deleted {body.get('product_id')}", mimetype="text/plain")
+    return func.HttpResponse(f"Deleted {body['product_id']}", mimetype="text/plain")
