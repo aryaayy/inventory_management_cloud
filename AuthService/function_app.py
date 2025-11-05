@@ -1,74 +1,90 @@
 import azure.functions as func
-import datetime
-import json
-import logging
-import uuid
-import sys
-import os
+import json, uuid, sys, os, requests
+
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from utils.auth import issue_token, decode_token, get_bearer_token, AuthError, require_user, require_role
+from utils.auth import issue_token, decode_token, get_bearer_token, require_user, require_role, error
 
 app = func.FunctionApp()
 
-# ---------------- AUTH ----------------
+PRODUCT_SERVICE_URL = os.getenv("PRODUCT_SERVICE_URL", "http://localhost:7072/api")
+
+
+def proxy(method: str, path: str, token: str | None, body=None) -> func.HttpResponse:
+    headers = {"Authorization": token} if token else {}
+    resp = requests.request(method, f"{PRODUCT_SERVICE_URL}{path}", headers=headers, json=body)
+    return func.HttpResponse(resp.text, status_code=resp.status_code, mimetype="application/json")
+
+
+# ===== AUTH =====
 @app.route(route="auth/login", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
-def login(req: func.HttpRequest) -> func.HttpResponse:
+def login(req: func.HttpRequest):
     body = req.get_json()
     email = (body.get("email") or "").lower()
 
-    # MOCK user = 1 tenant only
     user = {
         "userId": f"u-{uuid.uuid4()}",
         "email": email,
         "tenantId": "T001",
-        "roles": ["Owner"]  # default Owner
+        "roles": ["Owner"]
     }
-
     token = issue_token(user, 3600)
     return func.HttpResponse(json.dumps({"token": token}), mimetype="application/json")
 
 
-# ---------------- PROTECTED PAGES ----------------
-
-# GET profile
-@app.route(route="auth/me", auth_level=func.AuthLevel.FUNCTION)
-def me(req: func.HttpRequest) -> func.HttpResponse:
-    claims, err = require_user(req)
-    if err: return err
+@app.route(route="auth/me", auth_level=func.AuthLevel.ANONYMOUS)
+def me(req: func.HttpRequest):
+    claims, resp = require_user(req)
+    if resp: return resp
     return func.HttpResponse(json.dumps(claims), mimetype="application/json")
 
 
-# Tenant info
-@app.route(route="tenant/info", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
-def tenant_info(req: func.HttpRequest) -> func.HttpResponse:
-    # ambil token dari header
+@app.route(route="tenant/info", auth_level=func.AuthLevel.ANONYMOUS)
+def tenant_info(req: func.HttpRequest):
     token = get_bearer_token(req.headers.get("Authorization"))
+    if not token: return error("token_required", 401)
+    claims = decode_token(token)
+    return func.HttpResponse(json.dumps({
+        "tenantId": claims["tenantId"],
+        "storeName": f"Toko Demo {claims['tenantId']}",
+        "plan": "Premium"
+    }), mimetype="application/json")
 
-    # fallback: token via query param untuk demo di browser
-    if not token:
-        demo_token = req.params.get("token")
-        if not demo_token:
-            return func.HttpResponse(
-                json.dumps({
-                    "info": "Gunakan aplikasi / curl untuk akses secure endpoint",
-                    "hint": "Tambahkan ?token=JWT_DISINI untuk demo",
-                    "example": "/api/tenant/info?token=PASTE_HERE"
-                }),
-                status_code=200,
-                mimetype="application/json"
-            )
-        token = demo_token
-    
-    # verify token
-    try:
-        claims = decode_token(token)
-    except Exception as e:
-        return func.HttpResponse(f"Invalid token: {e}", status_code=401)
 
-    result = {
-        "tenantId": claims.get("tenantId"),
-        "name": "Toko Demo " + claims.get("tenantId"),
-        "plan": "Premium",
-    }
+# ===== GATEWAY → PRODUCT SERVICE =====
+@app.route(route="products", auth_level=func.AuthLevel.ANONYMOUS)
+def gw_products(req: func.HttpRequest):
+    claims, resp = require_user(req)
+    if resp: return resp
+    return proxy("GET", "/product/products", req.headers.get("Authorization"))
 
-    return func.HttpResponse(json.dumps(result), status_code=200, mimetype="application/json")
+
+@app.route(route="products/manage", auth_level=func.AuthLevel.ANONYMOUS)
+def gw_manage(req: func.HttpRequest):
+    claims, resp = require_user(req)
+    if resp: return resp
+    if not require_role(claims, ["Owner"]): return error("owner_only", 403)
+    return proxy("GET", "/product/manage", req.headers.get("Authorization"))
+
+
+@app.route(route="products/create", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
+def gw_create(req: func.HttpRequest):
+    claims, resp = require_user(req)
+    if resp: return resp
+    if not require_role(claims, ["Owner"]): return error("owner_only", 403)
+    return proxy("POST", "/product/create", req.headers.get("Authorization"), req.get_json())
+
+
+@app.route(route="products/update", methods=["PUT"], auth_level=func.AuthLevel.ANONYMOUS)
+def gw_update(req: func.HttpRequest):
+    claims, resp = require_user(req)
+    if resp: return resp
+    if not require_role(claims, ["Owner"]): return error("owner_only", 403)
+    return proxy("PUT", "/product/update", req.headers.get("Authorization"), req.get_json())
+
+
+@app.route(route="products/delete", methods=["DELETE"], auth_level=func.AuthLevel.ANONYMOUS)
+def gw_delete(req: func.HttpRequest):
+    claims, resp = require_user(req)
+    if resp: return resp
+    if not require_role(claims, ["Owner"]): return error("owner_only", 403)
+    return proxy("DELETE", "/product/delete", req.headers.get("Authorization"), req.get_json())
