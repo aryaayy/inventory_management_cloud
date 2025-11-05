@@ -25,6 +25,17 @@ def load_inventories(req: func.HttpRequest):
         return data.json(), None
     except Exception as e:
         return None, str(e)
+    
+def load_inventories2():
+    try:
+        headers = {"Authorization": f"Bearer {TOKEN}"}
+        response = requests.get(
+            "http://localhost:7073/api/inventory",
+            headers=headers
+        )
+        return response.json(), None
+    except Exception as e:
+        return None, str(e)
 
 def generate_inventory_report(inventories):
     if not inventories:
@@ -48,17 +59,17 @@ def generate_inventory_report(inventories):
 
     return "\n".join(report_lines)
 
-# @app.schedule(schedule="0 */1 * * * *", arg_name="timer", run_on_startup=True, use_monitor=False)
-# def scheduled_report(timer: func.TimerRequest) -> None:
-#     try:
-#         inventories, err = load_inventories()
-#         if err:
-#             logging.error(f"Failed to load inventories: {err}")
-#             return
-#         report = generate_inventory_report(inventories)
-#         logging.info(report)
-#     except Exception as e:
-#         logging.error(f"Scheduled report error: {e}")
+@app.schedule(schedule="0 */1 * * * *", arg_name="timer", run_on_startup=True, use_monitor=False)
+def scheduled_report(timer: func.TimerRequest) -> None:
+    try:
+        inventories, err = load_inventories2()
+        if err:
+            logging.error(f"Failed to load inventories: {err}")
+            return
+        report = generate_inventory_report(inventories)
+        logging.info(report)
+    except Exception as e:
+        logging.error(f"Scheduled report error: {e}")
 
 @app.route(route="report/run", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def run_report(req: func.HttpRequest) -> func.HttpResponse:
