@@ -1,0 +1,274 @@
+[
+  {
+    "id": "9988776655",
+    "item_name": "Keychron K2 Pro Wireless Mechanical Keyboard - RGB Hot-swappable",
+    "description": "Keychron K2 Pro adalah keyboard mekanis nirkabel QMK/VIA custom yang sepenuhnya dapat dikustomisasi. Dengan layout 75% yang ringkas, ini adalah pilihan premium untuk Mac dan Windows.",
+    "weight": 1.2,
+    "pre_order": {
+        "days_to_ship": 2,
+        "is_pre_order": false
+    },
+    "images": {
+        "image_id_list": [
+            "id_img_001",
+            "id_img_002",
+            "id_img_003"
+        ],
+        "image_url_list": [
+            "https://cf.shopee.co.id/file/sg-11134201-22100-fakeimage01",
+            "https://cf.shopee.co.id/file/sg-11134201-22100-fakeimage02",
+            "https://cf.shopee.co.id/file/sg-11134201-22100-fakeimage03"
+        ]
+    },
+    "item_status": "NORMAL",
+    "price_info": {
+        "current_price": 1850000,
+        "original_price": 2100000
+    },
+    "logistic_info": [
+        {
+            "size_id": 0,
+            "shipping_fee": 15000,
+            "enabled": true,
+            "logistic_id": 80001,
+            "is_free": false
+        },
+        {
+            "size_id": 0,
+            "shipping_fee": 0,
+            "enabled": true,
+            "logistic_id": 80002,
+            "is_free": true
+        }
+    ],
+    "attributes": [
+        {
+            "attribute_id": 1001,
+            "attribute_value_list": [
+                {
+                    "original_value_name": "Keychron",
+                    "value_id": 554,
+                    "value_unit": "Brand"
+                }
+            ]
+        },
+        {
+            "attribute_id": 1002,
+            "attribute_value_list": [
+                {
+                    "original_value_name": "Brown Switch",
+                    "value_id": 889,
+                    "value_unit": "Switch Type"
+                }
+            ]
+        }
+    ],
+    "category_id": 10089,
+    "dimension": {
+        "package_width": 37,
+        "package_length": 17,
+        "package_height": 6
+    },
+    "condition": "NEW",
+    "video_info": [
+        {
+            "video_url": "https://cvf.shopee.sg/file/demo_keyboard_k2.mp4",
+            "thumbnail_url": "https://cf.shopee.sg/file/thumb_video_k2.jpg",
+            "duration": 30
+        }
+    ],
+    "wholesale": [
+        {
+            "min_count": 5,
+            "max_count": 10,
+            "unit_price": 1750000
+        },
+        {
+            "min_count": 11,
+            "max_count": 50,
+            "unit_price": 1650000
+        }
+    ],
+    "brand": {
+        "brand_id": 94321,
+        "original_brand_name": "Keychron"
+    },
+    "item_dangerous": 1,
+    "description_info": {
+        "extended_description": {
+            "field_list": [
+                {
+                    "field_type": "text",
+                    "text": "Garansi Resmi 1 Tahun Keychron Indonesia.",
+                    "image_info": {
+                        "image_id": ""
+                    }
+                },
+                {
+                    "field_type": "image",
+                    "text": "",
+                    "image_info": {
+                        "image_id": "desc_img_999"
+                    }
+                }
+            ]
+        }
+    },
+    "description_type": "extended",
+    "complaint_policy": {
+        "warranty_time": "ONE_YEAR",
+        "exclude_entrepreneur_warranty": false,
+        "complaint_address_id": 112233,
+        "additional_information": "Wajib menyertakan video unboxing untuk klaim garansi."
+    },
+    "seller_stock": [
+        {
+            "location_id": "GUDANG_JKT_01",
+            "stock": 150
+        },
+        {
+            "location_id": "GUDANG_SBY_02",
+            "stock": 25
+        }
+    ],
+    "_rid": "nUhiAKFfhqECAAAAAAAAAA==",
+    "_self": "dbs/nUhiAA==/colls/nUhiAKFfhqE=/docs/nUhiAKFfhqECAAAAAAAAAA==/",
+    "_etag": "\"01003b96-0000-6400-0000-6925dcaa0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1764089002
+  },
+  {
+    "id": "c92662ef-80b6-4ca9-98e7-1891b67db31a",
+    "item_name": "Laptop Gaming ROG",
+    "description": "Laptop untuk gamers sejati",
+    "weight": 1.7,
+    "pre_order": {
+        "days_to_ship": 2,
+        "is_pre_order": false
+    },
+    "images": {
+        "image_id_list": [
+            "id_img_001",
+            "id_img_002",
+            "id_img_003"
+        ],
+        "image_url_list": [
+            "https://cf.shopee.co.id/file/sg-11134201-22100-fakeimage01",
+            "https://cf.shopee.co.id/file/sg-11134201-22100-fakeimage02",
+            "https://cf.shopee.co.id/file/sg-11134201-22100-fakeimage03"
+        ]
+    },
+    "item_status": "NORMAL",
+    "price_info": {
+        "current_price": 1850000,
+        "original_price": 2100000
+    },
+    "logistic_info": [
+        {
+            "size_id": 0,
+            "shipping_fee": 15000,
+            "enabled": true,
+            "logistic_id": 80001,
+            "is_free": false
+        },
+        {
+            "size_id": 0,
+            "shipping_fee": 0,
+            "enabled": true,
+            "logistic_id": 80002,
+            "is_free": true
+        }
+    ],
+    "attributes": [
+        {
+            "attribute_id": 1001,
+            "attribute_value_list": [
+                {
+                    "original_value_name": "Keychron",
+                    "value_id": 554,
+                    "value_unit": "Brand"
+                }
+            ]
+        },
+        {
+            "attribute_id": 1002,
+            "attribute_value_list": [
+                {
+                    "original_value_name": "Brown Switch",
+                    "value_id": 889,
+                    "value_unit": "Switch Type"
+                }
+            ]
+        }
+    ],
+    "category_id": 10089,
+    "dimension": {
+        "package_width": 37,
+        "package_length": 17,
+        "package_height": 6
+    },
+    "condition": "NEW",
+    "video_info": [
+        {
+            "video_url": "https://cvf.shopee.sg/file/demo_keyboard_k2.mp4",
+            "thumbnail_url": "https://cf.shopee.sg/file/thumb_video_k2.jpg",
+            "duration": 30
+        }
+    ],
+    "wholesale": [
+        {
+            "min_count": 5,
+            "max_count": 10,
+            "unit_price": 13500000
+        },
+        {
+            "min_count": 11,
+            "max_count": 50,
+            "unit_price": 12500000
+        }
+    ],
+    "brand": {
+        "brand_id": 94322,
+        "original_brand_name": "Asus"
+    },
+    "item_dangerous": 1,
+    "description_info": {
+        "extended_description": {
+            "field_list": [
+                {
+                    "field_type": "text",
+                    "text": "Garansi Resmi 1 Tahun Asus Indonesia.",
+                    "image_info": {
+                        "image_id": ""
+                    }
+                },
+                {
+                    "field_type": "image",
+                    "text": "",
+                    "image_info": {
+                        "image_id": "desc_img_999"
+                    }
+                }
+            ]
+        }
+    },
+    "description_type": "extended",
+    "complaint_policy": {
+        "warranty_time": "ONE_YEAR",
+        "exclude_entrepreneur_warranty": false,
+        "complaint_address_id": 112233,
+        "additional_information": "Wajib menyertakan video unboxing untuk klaim garansi."
+    },
+    "seller_stock": [
+        {
+            "location_id": "GUDANG_JKT_01",
+            "stock": 5
+        }
+    ],
+    "_rid": "nUhiAKFfhqECAAAAAAAAAA==",
+    "_self": "dbs/nUhiAA==/colls/nUhiAKFfhqE=/docs/nUhiAKFfhqECAAAAAAAAAA==/",
+    "_etag": "\"01003b96-0000-6400-0000-6925dcaa0000\"",
+    "_attachments": "attachments/",
+    "_ts": 1764089002
+  }
+]

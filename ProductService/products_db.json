@@ -9,9 +9,9 @@
         },
         {
             "product_id": "P002",
-            "name": "Hoodie",
-            "description": "Hoodie oversized pria/wanita",
-            "price": 200000,
+            "name": "Celana Pendek",
+            "description": "Celana pendek pria/wanita",
+            "price": 30000,
             "tenantId": "T001"
         },
         {
@@ -19,13 +19,6 @@
             "name": "Topi",
             "description": "Topi keren pria/wanita",
             "price": 250000,
-            "tenantId": "T001"
-        },
-        {
-            "product_id": "P004",
-            "name": "Kemeja",
-            "description": "Kemeja putih",
-            "price": 150000,
             "tenantId": "T001"
         }
     ]
