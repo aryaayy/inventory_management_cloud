@@ -2,8 +2,9 @@ import azure.functions as func
 from azure.cosmos import CosmosClient, PartitionKey, exceptions
 import requests
 import uuid
+import logging
 import json, os, sys
-from auth_utils import require_role, require_user, error
+# from auth_utils import require_role, require_user, error
 
 app = func.FunctionApp()
 
@@ -12,9 +13,30 @@ KEY = os.environ.get("COSMOS_KEY")
 DATABASE = os.environ.get("COSMOS_DATABASE")
 CONTAINER = os.environ.get("COSMOS_CONTAINER")
 
-client = CosmosClient(ENDPOINT, KEY)
-database = client.get_database_client(DATABASE)
-container = database.get_container_client(CONTAINER)
+client = None
+container = None
+
+def get_container():
+    """
+    Fungsi ini membuat koneksi hanya SAAT DIBUTUHKAN.
+    Mencegah aplikasi mati duluan jika koneksi gagal saat startup.
+    """
+    global client, container
+    if not container:
+        logging.info("Mencoba menghubungkan ke Cosmos DB...")
+        try:
+            # Validasi Variable Wajib
+            if not ENDPOINT or not KEY:
+                raise ValueError("FATAL: COSMOS_ENDPOINT atau COSMOS_KEY kosong/tidak terbaca!")
+            
+            client = CosmosClient(ENDPOINT, KEY)
+            database = client.get_database_client(DATABASE)
+            container = database.get_container_client(CONTAINER)
+            logging.info(f"Berhasil konek ke container: {CONTAINER}")
+        except Exception as e:
+            logging.error(f"Gagal inisialisasi DB: {str(e)}")
+            raise e # Lempar error agar kelihatan di log saat fungsi dipanggil
+    return container
 
 DATA_FILE = "products_db.json"
 
@@ -34,14 +56,16 @@ def _save(data):
 
 
 # ========= READ (tenant-scoped) =========
-@app.route(route="product/products", auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="product/products", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def get_products(req: func.HttpRequest) -> func.HttpResponse:
     try:
+        ctr = get_container()
+
         query = """
             SELECT * FROM c 
         """
 
-        items = list(container.query_items(
+        items = list(ctr.query_items(
             query=query,
             enable_cross_partition_query=True
         ))
@@ -52,7 +76,7 @@ def get_products(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"DB Error: {str(e)}", status_code=500)
 
 # ========= CREATE =========
-@app.route(route="product/create", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="product/create", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def create_product(req: func.HttpRequest) -> func.HttpResponse:
     # claims, err = require_user(req)
     # if err: return err
@@ -60,6 +84,7 @@ def create_product(req: func.HttpRequest) -> func.HttpResponse:
     #     return error("owner_only", 403)
 
     try:
+        ctr = get_container()
         body = req.get_json()
     except ValueError:
         return func.HttpResponse("Invalid JSON", status_code=400)
@@ -76,8 +101,8 @@ def create_product(req: func.HttpRequest) -> func.HttpResponse:
     }
 
     try:
-        container.create_item(body=new_product)
-        response = requests.post("http://localhost:7001/api/sync_marketplace_item", json=new_product)
+        ctr.create_item(body=new_product)
+        response = requests.post("https://sync-service-k3.azurewebsites.net/api/sync_marketplace_item", json=new_product)
         return func.HttpResponse(json.dumps(new_product), mimetype="application/json", status_code=201)
     except exceptions.CosmosHttpResponseError as e:
         return func.HttpResponse(f"Failed to create: {str(e)}", status_code=500)

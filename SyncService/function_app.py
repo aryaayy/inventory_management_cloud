@@ -20,7 +20,7 @@ container = database.get_container_client(CONTAINER)
 # ---------------------------------------------------------
 # HTTP Trigger: Sync Product Data (Full Item Update)
 # ---------------------------------------------------------
-@app.route(route="sync_marketplace_item", auth_level=func.AuthLevel.FUNCTION)
+@app.route(route="sync_marketplace_item", auth_level=func.AuthLevel.ANONYMOUS)
 def sync_marketplace_item(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Menerima request sinkronisasi detail produk.')
 
