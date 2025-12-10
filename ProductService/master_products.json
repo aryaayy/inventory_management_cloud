@@ -1,0 +1,30 @@
+{ 
+  "sku": "INNO-X3",           
+  "name": "Inno X3 Mouse",
+  "base_price": 350000,      
+  "status": "ACTIVE",
+  
+  "inventory_summary": {
+    "total_quantity": 50,
+    "last_stock_update": "2025-12-09T19:00:00Z"
+  },
+
+  "warehouses": [
+    {
+      "warehouse_code": "WH-DEFAULT",
+      "quantity": 25
+    },
+    {
+      "warehouse_code": "GUDANG-UTAMA",
+      "quantity": 25
+    }
+  ],
+
+  "connected_channels": ["TOKOPEDIA", "SHOPEE", "LAZADA"],
+  
+  "created_at": "2025-12-09T19:00:00Z",
+  "updated_at": "2025-12-09T19:00:00Z"
+}
+
+
+

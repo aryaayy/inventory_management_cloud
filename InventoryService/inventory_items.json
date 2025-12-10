@@ -1,0 +1,8 @@
+{
+  "sku": "INNO-X3",
+  "warehouse_id": "WH-JKT",
+  "quantity_on_hand": 100, 
+  "quantity_reserved": 5,  
+  "quantity_available": 95,
+  "safety_stock": 10       
+}
