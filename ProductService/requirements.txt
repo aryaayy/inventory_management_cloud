@@ -5,4 +5,5 @@
 azure-functions
 azure-cosmos
 azure-servicebus
+azure-storage-blob
 requests

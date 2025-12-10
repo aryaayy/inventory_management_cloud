@@ -1,22 +1,33 @@
 import azure.functions as func
 from azure.cosmos import CosmosClient, exceptions
+from azure.storage.blob import BlobServiceClient, ContentSettings
+from azure.servicebus import ServiceBusClient, ServiceBusMessage
 import logging
 import json
 import os
 import uuid
 import datetime
-from azure.servicebus import ServiceBusClient, ServiceBusMessage
-        
+import base64
+
 app = func.FunctionApp()
 
-# Konfigurasi Environment
+# --- KONFIGURASI ENVIRONMENT ---
 ENDPOINT = os.environ.get("COSMOS_ENDPOINT")
 KEY = os.environ.get("COSMOS_KEY")
 DATABASE_NAME = os.environ.get("COSMOS_DATABASE")
 CONTAINER_NAME = os.environ.get("COSMOS_CONTAINER")
 
+# Variable baru untuk Blob
+BLOB_CONN_STR = os.environ.get("BLOB_CONNECTION_STRING")
+BLOB_CONTAINER = "product-images"
+
+# Variable untuk Service Bus
+SB_CONN_STR = os.environ.get("SERVICE_BUS_CONNECTION")
+TOPIC_NAME = "product-events"
+
 client = None
 container = None
+blob_service_client = None
 
 def get_container():
     global client, container
@@ -30,9 +41,70 @@ def get_container():
             raise e
     return container
 
-# Ambil Connection String dari local.settings.json
-SB_CONN_STR = os.environ.get("SERVICE_BUS_CONNECTION")
-TOPIC_NAME = "product-events"
+def get_blob_service():
+    global blob_service_client
+    if not blob_service_client and BLOB_CONN_STR:
+        try:
+            blob_service_client = BlobServiceClient.from_connection_string(BLOB_CONN_STR)
+        except Exception as e:
+            logging.error(f"Error connecting to Blob Storage: {e}")
+            # Jangan raise error di sini biar app tetap jalan meski storage bermasalah
+    return blob_service_client
+
+def get_iso_timestamp():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+# --- FUNGSI BARU: UPLOAD KE BLOB ---
+def process_images(image_list):
+    """
+    Menerima list gambar. 
+    - Kalau formatnya Base64 -> Upload ke Blob -> Ganti jadi URL.
+    - Kalau formatnya sudah URL -> Biarkan saja.
+    """
+    if not image_list: return []
+    
+    clean_urls = []
+    blob_client_service = get_blob_service()
+    
+    for img in image_list:
+        # 1. Jika sudah URL (misal edit produk tapi gambar gak diganti), skip upload
+        if img.startswith("http"):
+            clean_urls.append(img)
+            continue
+            
+        # 2. Jika Base64, Upload!
+        if img.startswith("data:image") and blob_client_service:
+            try:
+                # Parsing: "data:image/jpeg;base64,....."
+                header, encoded = img.split(",", 1)
+                file_ext = header.split(";")[0].split("/")[1] # dapat 'jpeg' atau 'png'
+                
+                # Decode jadi binary
+                data = base64.b64decode(encoded)
+                
+                # Nama file unik: uuid.jpg
+                filename = f"{uuid.uuid4()}.{file_ext}"
+                
+                # Upload
+                blob_client = blob_client_service.get_blob_client(container=BLOB_CONTAINER, blob=filename)
+                blob_client.upload_blob(
+                    data, 
+                    overwrite=True,
+                    content_settings=ContentSettings(content_type=f"image/{file_ext}")
+                )
+                
+                # Ambil URL Hasil Upload
+                clean_urls.append(blob_client.url)
+                logging.info(f"Success upload blob: {blob_client.url}")
+                
+            except Exception as e:
+                logging.error(f"Failed to upload image: {e}")
+                # Kalau gagal, jangan crash, skip aja gambarnya
+        else:
+            # Kalau format string aneh, skip
+            continue
+            
+    return clean_urls
 
 def publish_event(sku, action, data=None):
     """
@@ -67,11 +139,8 @@ def publish_event(sku, action, data=None):
     except Exception as e:
         logging.error(f"Failed to publish event: {str(e)}")
 
-def get_iso_timestamp():
-    return datetime.datetime.now(datetime.timezone.utc).isoformat()
-
 # ==========================================
-# 1. CREATE PRODUCT
+# 1. CREATE PRODUCT (Updated with Blob)
 # ==========================================
 @app.route(route="product/create", methods=["POST"], auth_level=func.AuthLevel.ANONYMOUS)
 def create_product(req: func.HttpRequest) -> func.HttpResponse:
@@ -86,18 +155,19 @@ def create_product(req: func.HttpRequest) -> func.HttpResponse:
     if 'sku' not in req_body or 'name' not in req_body:
         return func.HttpResponse("Field 'sku' dan 'name' wajib ada.", status_code=400)
 
-    # Validasi Unik SKU (Opsional tapi disarankan)
-    # Karena Partition Key = id, pencarian by SKU menjadi Cross-Partition Query
+    # Cek Unik SKU
     query = "SELECT * FROM c WHERE c.sku = @sku"
-    parameters = [{"name": "@sku", "value": req_body['sku']}]
-    existing = list(ctr.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
-    
+    existing = list(ctr.query_items(query=query, parameters=[{"name": "@sku", "value": req_body['sku']}], enable_cross_partition_query=True))
     if existing:
         return func.HttpResponse(f"Product dengan SKU {req_body['sku']} sudah ada.", status_code=409)
 
-    # Generate ID (Karena ID adalah Partition Key, ini menentukan lokasi data)
     new_id = str(uuid.uuid4())
     timestamp = get_iso_timestamp()
+
+    # --- PROSES GAMBAR (BLOB) ---
+    raw_images = req_body.get('images', [])
+    final_images = process_images(raw_images) # Upload ke Blob & Dapatkan URL
+    # ----------------------------
 
     warehouses = req_body.get('warehouses', [])
     total_quantity = 0
@@ -113,11 +183,13 @@ def create_product(req: func.HttpRequest) -> func.HttpResponse:
         "id": new_id,   # PARTITION KEY
         "sku": req_body['sku'], 
         "name": req_body['name'],
-        "description": req_body['description'],
-        "brand": req_body['brand'],
+        "description": req_body.get('description', ""),
+        "brand": req_body.get('brand', "No Brand"),
         "base_price": req_body.get('base_price', 0),
         "status": req_body.get('status', 'ACTIVE'),
-        "images": req_body.get('images', []),
+        
+        "images": final_images, # Simpan URL Blob, bukan Base64!
+        
         "inventory_summary": inventory_summary,
         "warehouses": req_body.get('warehouses', []),
         "connected_channels": req_body.get('connected_channels', []), 
@@ -142,7 +214,7 @@ def create_product(req: func.HttpRequest) -> func.HttpResponse:
 
 
 # ==========================================
-# 2. READ PRODUCT(S)
+# 2. READ PRODUCT(S) (Sama Saja)
 # ==========================================
 @app.route(route="product/products", methods=["GET"], auth_level=func.AuthLevel.ANONYMOUS)
 def get_products(req: func.HttpRequest) -> func.HttpResponse:
@@ -154,22 +226,15 @@ def get_products(req: func.HttpRequest) -> func.HttpResponse:
 
     try:
         if id_filter:
-            # Point Read (Sangat Cepat & Murah karena ID = Partition Key)
-            # Menggunakan read_item lebih efisien daripada query SELECT
             try:
                 item = ctr.read_item(item=id_filter, partition_key=id_filter)
                 items = [item]
             except exceptions.CosmosResourceNotFoundError:
                 items = []
-        
         elif sku_filter:
-            # Query by SKU (Cross-Partition karena Partition Key kita ID)
             query = "SELECT * FROM c WHERE c.sku = @sku"
-            parameters = [{"name": "@sku", "value": sku_filter}]
-            items = list(ctr.query_items(query=query, parameters=parameters, enable_cross_partition_query=True))
-        
+            items = list(ctr.query_items(query=query, parameters=[{"name": "@sku", "value": sku_filter}], enable_cross_partition_query=True))
         else:
-            # Get All
             query = "SELECT * FROM c"
             items = list(ctr.query_items(query=query, enable_cross_partition_query=True))
 
@@ -180,7 +245,7 @@ def get_products(req: func.HttpRequest) -> func.HttpResponse:
 
 
 # ==========================================
-# 3. UPDATE PRODUCT
+# 3. UPDATE PRODUCT (Updated with Blob)
 # ==========================================
 @app.route(route="product/update", methods=["PUT"], auth_level=func.AuthLevel.ANONYMOUS)
 def update_product(req: func.HttpRequest) -> func.HttpResponse:
@@ -192,52 +257,49 @@ def update_product(req: func.HttpRequest) -> func.HttpResponse:
     except ValueError:
         return func.HttpResponse("Invalid JSON body", status_code=400)
 
-    # Cukup ID saja karena ID adalah Partition Key
     if 'id' not in req_body:
         return func.HttpResponse("Field 'id' wajib ada untuk update.", status_code=400)
 
     item_id = req_body['id']
 
     try:
-        # 1. Ambil data lama (Read Item)
         existing_item = ctr.read_item(item=item_id, partition_key=item_id)
 
-        # 2. Update Basic Fields
-        # Kita menggunakan .get(field, default_lama) agar jika user tidak mengirim field tersebut,
-        # data lama tidak hilang (Partial Update).
+        # --- PROSES GAMBAR (UPDATE) ---
+        if 'images' in req_body:
+            # Fungsi process_images sudah handle mix antara URL lama dan Base64 baru
+            existing_item['images'] = process_images(req_body['images'])
+        # ------------------------------
+
+        # Update field lain (gunakan .get untuk safety)
         existing_item['name'] = req_body.get('name', existing_item.get('name'))
         existing_item['description'] = req_body.get('description', existing_item.get('description'))
         existing_item['brand'] = req_body.get('brand', existing_item.get('brand'))
         existing_item['base_price'] = req_body.get('base_price', existing_item.get('base_price'))
         existing_item['status'] = req_body.get('status', existing_item.get('status'))
-        existing_item['images'] = req_body.get('images', existing_item.get('images'))
+        
+        # Connected channels & Warehouses
         existing_item['connected_channels'] = req_body.get('connected_channels', existing_item.get('connected_channels'))
         
-        # 3. Update Warehouses & Recalculate Inventory Summary
-        # Logika ini disamakan dengan Create Product
         if 'warehouses' in req_body:
             new_warehouses = req_body['warehouses']
             existing_item['warehouses'] = new_warehouses
             
-            # Hitung ulang total quantity seperti di fungsi create
+            # Recalculate stock
             total_quantity = 0
             for warehouse in new_warehouses:
                 total_quantity += warehouse.get('quantity', 0)
             
-            # Update object inventory_summary
             existing_item['inventory_summary'] = {
                 "total_quantity": total_quantity,
                 "last_stock_update": get_iso_timestamp()
             }
 
-        # 4. Update Timestamp Terakhir
         existing_item['updated_at'] = get_iso_timestamp()
 
-        # 5. Simpan perubahan (Replace Item)
         updated_item = ctr.replace_item(item=item_id, body=existing_item)
 
-        # [PLACEHOLDER SINKRONISASI: Update]
-        # Publish Event ke Service Bus
+        # Publish Update Event
         publish_event(
             sku=updated_item['sku'], 
             action="PRODUCT_UPDATED", 
@@ -254,94 +316,27 @@ def update_product(req: func.HttpRequest) -> func.HttpResponse:
 
 
 # ==========================================
-# 4. DELETE PRODUCT
+# 4. DELETE PRODUCT (Sama Saja)
 # ==========================================
 @app.route(route="product/delete", methods=["DELETE"], auth_level=func.AuthLevel.ANONYMOUS)
 def delete_product(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Processing Delete Product request.')
 
-    # Ambil ID dari query param (contoh: ?id=xxx)
     item_id = req.params.get('id')
-
     if not item_id:
         return func.HttpResponse("Parameter 'id' wajib ada.", status_code=400)
 
     ctr = get_container()
 
     try:
-        # Hapus item. partition_key diisi item_id
         ctr.delete_item(item=item_id, partition_key=item_id)
-
-        # [PLACEHOLDER SINKRONISASI: Delete]
         logging.info(f"Produk {item_id} berhasil dihapus.")
-
         return func.HttpResponse(f"Produk dengan ID {item_id} berhasil dihapus.", status_code=200)
 
     except exceptions.CosmosResourceNotFoundError:
         return func.HttpResponse("Produk tidak ditemukan.", status_code=404)
     except exceptions.CosmosHttpResponseError as e:
         return func.HttpResponse(f"Error deleting from DB: {e}", status_code=500)
-
-# ==========================================
-# 5. SYNC STOCK FROM INVENTORY (Subscriber)
-# ==========================================
-@app.service_bus_topic_trigger(
-    arg_name="msg", 
-    topic_name="product-events", 
-    subscription_name="product-stock-sub",  # <--- Subscription BARU
-    connection="SERVICE_BUS_CONNECTION"
-)
-def process_stock_updates(msg: func.ServiceBusMessage):
-    message_body = msg.get_body().decode("utf-8")
-    event = json.loads(message_body)
-    
-    action = event.get('action')
-    sku = event.get('sku')
-    data = event.get('data', {})
-    
-    if action == "STOCK_CHANGED":
-        logging.info(f"[Product] Received STOCK_CHANGED for {sku}")
-        
-        ctr = get_container()
-        
-        # 1. Cari Produk berdasarkan SKU (Cross Partition Query jika PK=/id)
-        # Karena di Product Service partition key kita adalah /id, bukan /sku.
-        try:
-            query = "SELECT * FROM c WHERE c.sku = @sku"
-            params = [{"name": "@sku", "value": sku}]
-            items = list(ctr.query_items(query=query, parameters=params, enable_cross_partition_query=True))
-            
-            if not items:
-                logging.warning(f"[Product] SKU {sku} not found via sync event.")
-                return
-
-            product_doc = items[0]
-            
-            # 2. Update Field Stok
-            new_warehouses = data.get('warehouses', [])
-            total_qty = data.get('total_available', 0)
-            
-            # Update struktur warehouses (Mapping kode agar sesuai schema product)
-            # Pastikan formatnya cocok dengan yang diinginkan frontend Product
-            mapped_warehouses = []
-            for w in new_warehouses:
-                mapped_warehouses.append({
-                    "warehouse_code": w.get('warehouse_code'),
-                    "quantity": int(w.get('quantity', 0))
-                })
-
-            product_doc['warehouses'] = mapped_warehouses
-            product_doc['inventory_summary'] = {
-                "total_quantity": total_qty,
-                "last_stock_update": get_iso_timestamp()
-            }
-            
-            # 3. Simpan Perubahan
-            ctr.replace_item(item=product_doc['id'], body=product_doc)
-            logging.info(f"[Product] Stock updated for {sku} (Total: {total_qty})")
-            
-        except Exception as e:
-            logging.error(f"[Product] Failed to update stock: {e}")
 
 # import azure.functions as func
 # from azure.cosmos import CosmosClient, PartitionKey, exceptions
